@@ -81,8 +81,8 @@ const LoginTestWithButtonOnly: React.FC = () => {
     console.log("clicked login button");
     login(
     { variables: {
-      username: "bob",
-      password: "pass",
+      username: "lucas",
+      password: "newpass",
     }});
   };
 
