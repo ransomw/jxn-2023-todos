@@ -5,3 +5,4 @@ graphql-server==3.0.0b6
 graphql-core==3.2.3
 click
 pyjwt
+grip
