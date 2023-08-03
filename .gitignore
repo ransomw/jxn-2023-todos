@@ -1,0 +1,6 @@
+node_modules
+schema.graphql
+.venv/
+srv_static/js/bundle.js
+__pycache__/
+src/__generated__/
