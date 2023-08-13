@@ -65,17 +65,18 @@ cache: new InMemoryCache(),
 const LoginTestWithButtonOnly: React.FC = () => {
   const login_mutation : DocumentNode = gql(LOGIN_MUTATION_STR) as DocumentNode;
   const test_query : DocumentNode = gql(HELLO_LOGIN_QUERY_STR) as DocumentNode;
+  const { loading: loading_test, data: data_test, refetch: refetch_test } = useQuery(test_query);
   const [login] = useMutation(login_mutation, {
     onCompleted: ({ login }) => {
 
       console.log("got login token "+login.token);
       localStorage.setItem(AUTH_TOKEN, login.token);
-      
+      refetch_test();
     },
-    refetchQueries: ['helloLoginQuery']
+    // refetchQueries: ['helloLoginQuery']
   });
 
-  const { loading: loading_test, data: data_test } = useQuery(test_query);
+
 
   const on_hello_login_click = (event: MouseEvent<HTMLButtonElement>) => {
     console.log("clicked login button");
