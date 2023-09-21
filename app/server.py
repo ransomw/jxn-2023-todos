@@ -24,12 +24,75 @@ class Login(graphene.Mutation):
         return Login(token=token)
     
 
+_todos = []
+_next_todo_id = 0
+
+class Todo(graphene.ObjectType):
+    text = graphene.String()
+    id = graphene.Int()
+
+class CreateTodo(graphene.Mutation):
+    class Arguments:
+        text = graphene.String()
+
+    todo = graphene.Field(lambda: Todo)
+
+    def mutate(root, info, text):
+        global _next_todo_id
+        todo = Todo(text=text, id=_next_todo_id)
+        _next_todo_id += 1
+        _todos.append(todo)
+        return CreateTodo(todo=todo)
+    
+
+class DeleteTodo(graphene.Mutation):
+    class Arguments:
+        id = graphene.Int()
+
+    ok = graphene.Boolean()
+
+    def mutate(root, info, id):
+        global _todos
+        if id not in [todo.id for todo in _todos]:
+            # todo: is this the GQL way to pass exceptions?  try out in graphiql
+            raise Exception("no todo with id "+str(id))
+        _todos = [todo for todo in _todos if todo.id != id]
+        return DeleteTodo(ok=True)
+
+
+class TodoInput(graphene.InputObjectType):
+    text = graphene.String(required=True)
+    id = graphene.Int(required=True)
+
+
+class UpdateTodo(graphene.Mutation):
+    class Arguments:
+        todo_data = TodoInput(required=True)
+
+    todo = graphene.Field(Todo)
+
+    def mutate(root, id, todo_data=None):
+        todo = Todo(text=todo_data.text, id=todo_data.id)
+        gen = (idx for idx, curr_todo in enumerate(_todos) if curr_todo.id == todo_data.id)
+        todo_idx = next(gen)
+        _todos[todo_idx].text = todo_data.text
+        return UpdateTodo(todo=todo)
+
+
 class Mutation(graphene.ObjectType):
     login = Login.Field()
+    create_todo = CreateTodo.Field()
+    delete_todo = DeleteTodo.Field()
+    update_todo = UpdateTodo.Field()
 
 
 class Query(graphene.ObjectType):
     hello = graphene.String(first_name=graphene.String(default_value="stranger"))
+
+    todos = graphene.List(Todo)
+
+    def resolve_todos(root, info):
+        return _todos
 
     def resolve_hello(root, info, first_name):
         if info.context.get('username', ''):

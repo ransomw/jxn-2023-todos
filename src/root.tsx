@@ -32,6 +32,18 @@ if (BUILD_ENV == "dev") {
     throw new Error("unknown build "+BUILD_ENV)
 }
 
+
+const ADD_TEXT_TODO_MUTATION_STR = /* GraphQL */ `
+  mutation AddTodo($text: String!) {
+    createTodo(text: $text) {
+        todo {
+          text
+          id
+        }
+    }
+  }
+`;
+
 const LOGIN_MUTATION_STR = /* GraphQL */ `
   mutation loginMutation(
     $username: String!
@@ -42,6 +54,36 @@ const LOGIN_MUTATION_STR = /* GraphQL */ `
     }
   }
 `;
+
+
+const DELETE_TEXT_TODO_MUTATION_STR = /* GraphQL */ `
+  mutation DeleteTodo($id: Int!) {
+    deleteTodo(id: $id) {
+        ok
+    }
+  }
+`;
+
+const UPDDATE_TEXT_TODO_MUTATION_STR = /* GraphQL */ `
+  mutation UpdateTodo($todo: TodoInput!) {
+    updateTodo(todoData: $todo) {
+        todo {
+            text
+            id
+        }
+    }
+  }
+`;
+
+const TEXT_TODOS_QUERY_STR = /* GraphQL */ `
+query TextTodosQuery {
+    todos {
+        text
+        id
+      }
+}
+`;
+
 
 const HELLO_LOGIN_QUERY_STR = /* GraphQL */ `
   query helloLoginQuery {
@@ -163,10 +205,134 @@ const UserPassLogin: React.FC = () => {
 };
 
 
+
+// todo: disable button when input empty
+const TextOnlyTodoInput: React.FC = () => {
+  const [todo_text, set_todo_text] = useState('');
+
+
+  // todo: use generated gql function rather than apollo client import?
+  const add_todo_mutation : DocumentNode = gql(ADD_TEXT_TODO_MUTATION_STR) as DocumentNode;
+
+  const [add_todo, { data, loading, error }] = useMutation(add_todo_mutation, {
+      refetchQueries: [
+        'TextTodosQuery'
+      ],
+    });
+    
+
+
+  if (loading) return (<span>'Submitting...'</span>);
+  if (error) return (<span>`Submission error! ${error.message}`</span>);
+
+  const on_input_change = (event: React.ChangeEvent<HTMLInputElement>) => {
+      set_todo_text(event.target.value);
+  };
+
+  const on_button_click = (event: MouseEvent<HTMLButtonElement>) => {
+      add_todo({ variables: { text: todo_text } });
+      set_todo_text('');
+  };
+
+  return (<div>
+      <input
+          type="text"
+          id="todo-text"
+          name="todo-text"
+          onChange={on_input_change}
+          value={todo_text}
+      />
+      <button onClick={on_button_click}>Save</button>
+  </div>);
+};
+
+type TextTodo = {
+  text: String,
+  id: number,
+};
+
+const TodoListItem: React.FC<{todo: TextTodo}> = ({todo}) => {
+  const [is_editing, set_is_editing] = useState(false);
+  const [update_text, set_update_text] = useState(todo.text as string);
+
+  const delete_todo_mutation : DocumentNode = gql(DELETE_TEXT_TODO_MUTATION_STR) as DocumentNode;
+  const update_todo_mutation : DocumentNode = gql(UPDDATE_TEXT_TODO_MUTATION_STR) as DocumentNode;
+
+  const [delete_todo, 
+      {data: delete_data, loading: delete_loading, error: delete_error}
+  ] = useMutation(delete_todo_mutation, {
+      refetchQueries: [
+          'TextTodosQuery'
+      ]
+  });
+
+  const [update_todo, 
+      {data: update_data, loading: update_loading, error: update_error}
+  ] = useMutation(update_todo_mutation, {
+      refetchQueries: [
+          'TextTodosQuery'
+      ]
+  });
+
+  const handle_delete_click = (event : MouseEvent<HTMLButtonElement>) => {
+      delete_todo({variables: {id: todo.id}});
+  };
+
+  const handle_edit_click = (event : MouseEvent<HTMLSpanElement>) => {
+      set_is_editing(true);
+  }
+
+  const on_input_change = (event: React.ChangeEvent<HTMLInputElement>) => {
+      set_update_text(event.target.value);
+  };
+
+  const on_button_click = (event : MouseEvent<HTMLButtonElement>) => {
+      update_todo({variables: {todo: {text: update_text, id: todo.id}}})
+      set_is_editing(false);
+  };
+
+
+  return (<li>
+      {is_editing ? 
+      <span>
+      <input
+          type="text"
+          id="todo-text"
+          name="todo-text"
+          onChange={on_input_change}
+          value={update_text}
+      />
+      <button onClick={on_button_click}>Save</button>
+      </span> :       
+      <span onClick={handle_edit_click}>{todo.text}</span>}
+      <button onClick={handle_delete_click}>delete</button>
+      </li>);
+};
+
+const TextOnlyTodoListItems: React.FC = () => {
+  const text_todos_query : DocumentNode = gql(TEXT_TODOS_QUERY_STR) as DocumentNode;
+  const {loading, data} = useQuery(text_todos_query);
+
+  if (loading) {
+      return (<span>loading...</span>)
+  }
+
+  const todo_list_items = data.todos.map(
+      // todo: get type inference out of gql schema if possible?
+      (todo: TextTodo) => (<TodoListItem key={todo.id} todo={todo}/>)
+  );
+
+  return (<ul>
+      {todo_list_items}
+  </ul>);
+};
+
+
 const TextOnlyTodoList: React.FC = () => {
   return (
       <div>
-          <h3>Todo list unimplemented</h3>
+            <TextOnlyTodoInput/>
+            <TextOnlyTodoListItems/>
       </div>
   )
 }
