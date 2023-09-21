@@ -27,6 +27,7 @@ class Login(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     login = Login.Field()
 
+
 class Query(graphene.ObjectType):
     hello = graphene.String(first_name=graphene.String(default_value="stranger"))
 
@@ -35,11 +36,11 @@ class Query(graphene.ObjectType):
             return f"Hello {info.context.get('username')}"
         return f'Hello {first_name}!'
 
+
 schema = graphene.Schema(
     query=Query, 
     mutation=Mutation,
     )
-
 
 app = flask.Flask(__name__, template_folder='srv_templates', static_folder='srv_static')
 
@@ -51,34 +52,18 @@ def home():
 class MyGraphQLView(GraphQLView):
     def get_context(self):
         context = super().get_context()
-
-        print("getting gql context.  keys:" + repr(context.keys()))
-
         curr_request = context['request']
-
-        print("flask request headers keys:"+repr(list(curr_request.headers.keys())))
-
         auth_header = curr_request.headers.get('Authorization', '')
-
         token = None
-
         if auth_header:
             mo = re.search(r'Bearer (.*)', auth_header)
             token = mo.group(1)
-
+        username = None
         if token:
             token_payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
             username = token_payload['username']
-        else:
-            username = None
-
-        print("gql context type: "+repr(type(context)))
-
         context['username'] = username
-
         return context
-
-
 
 
 app.add_url_rule(
